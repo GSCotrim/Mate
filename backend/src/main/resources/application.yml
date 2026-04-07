@@ -3,8 +3,8 @@ spring:
     name: mate
   datasource:
     url: jdbc:postgresql://localhost:5432/mate
-    username: mate
-    password: mate
+    username: ${DB_USERNAME:mate}
+    password: ${DB_PASSWORD:mate}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -15,7 +15,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 3600
+  expiration: 3600 # seconds
 
 springdoc:
   api-docs:
