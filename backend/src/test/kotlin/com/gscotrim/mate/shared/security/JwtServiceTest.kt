@@ -1,8 +1,7 @@
 package com.gscotrim.mate.shared.security
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import java.util.UUID
 
@@ -20,22 +19,22 @@ class JwtServiceTest {
     }
 
     @Test
-    fun `validates a valid token`() {
-        val token = jwtService.generateToken(UUID.randomUUID())
-        assertTrue(jwtService.isValid(token))
+    fun `returns null for a token signed with a different key`() {
+        val otherService = JwtService("other-secret-key-that-is-at-least-32-bytes!!", expiration)
+        val token = otherService.generateToken(UUID.randomUUID())
+        assertNull(jwtService.extractUserId(token))
     }
 
     @Test
-    fun `rejects a tampered token`() {
+    fun `returns null for a tampered token`() {
         val token = jwtService.generateToken(UUID.randomUUID())
         val tampered = token.dropLast(5) + "XXXXX"
-        assertFalse(jwtService.isValid(tampered))
+        assertNull(jwtService.extractUserId(tampered))
     }
 
     @Test
-    fun `rejects an expired token`() {
-        val expiredService = JwtService(secret, expiration = -1L)
-        val token = expiredService.generateToken(UUID.randomUUID())
-        assertFalse(jwtService.isValid(token))
+    fun `returns null for an expired token`() {
+        val expiredToken = JwtService(secret, expiration = -1L).generateToken(UUID.randomUUID())
+        assertNull(jwtService.extractUserId(expiredToken))
     }
 }
