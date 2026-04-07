@@ -2,6 +2,7 @@ package com.gscotrim.mate.shared.security
 
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.*
@@ -13,7 +14,8 @@ class JwtService(
     @param:Value("\${jwt.expiration}")
     private val expiration: Long
 ) {
-    private val key = Keys.hmacShaKeyFor(secret.toByteArray())
+    private val logger = LoggerFactory.getLogger(JwtService::class.java)
+    private val key = Keys.hmacShaKeyFor(secret.trim().toByteArray())
 
     fun generateToken(userId: UUID): String = Jwts.builder()
         .subject(userId.toString())
@@ -22,17 +24,18 @@ class JwtService(
         .signWith(key)
         .compact()
 
-    fun extractUserId(token: String): UUID =
-        UUID.fromString(
-            Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .payload
-                .subject
-        )
-
-    fun isValid(token: String): Boolean = runCatching {
-        Jwts.parser().verifyWith(key).build().parseSignedClaims(token)
-    }.isSuccess
+    fun extractUserId(token: String): UUID? =
+        try {
+            UUID.fromString(
+                Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .payload
+                    .subject
+            )
+        } catch (e: Exception) {
+            logger.debug("JWT validation failed: ${e.message}")
+            null
+        }
 }
