@@ -2,6 +2,7 @@ package com.gscotrim.mate.shared.config
 
 import com.gscotrim.mate.shared.security.JwtAuthFilter
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -23,7 +24,7 @@ class SecurityConfig(
         .csrf { it.disable() }
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
-            it.requestMatchers("/api/v1/auth/**").permitAll()
+            it.requestMatchers("/api/v1/users/login").permitAll()
             it.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
             it.anyRequest().authenticated()
         }
@@ -34,6 +35,11 @@ class SecurityConfig(
         }
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
         .build()
+
+    @Bean
+    fun jwtAuthFilterRegistration(filter: JwtAuthFilter): FilterRegistrationBean<JwtAuthFilter> {
+        return FilterRegistrationBean(filter).apply { isEnabled = false }
+    }
 
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()

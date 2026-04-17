@@ -1,19 +1,20 @@
 package com.gscotrim.mate.shared.security
 
+import jakarta.servlet.FilterChain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
-import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.UUID
 
 class JwtAuthFilterTest {
 
     private val secret = "test-secret-key-that-is-at-least-32-bytes-long!!"
-    private val jwtService = JwtService(secret, expiration = 3600L)
+    private val jwtService = JwtService(secret, expirationSeconds = 3600L)
     private val filter = JwtAuthFilter(jwtService)
 
     @AfterEach
@@ -27,16 +28,22 @@ class JwtAuthFilterTest {
         val request = MockHttpServletRequest()
         request.addHeader("Authorization", "Bearer ${jwtService.generateToken(userId)}")
 
-        filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
+        var capturedPrincipal: Any? = null
+        filter.doFilter(request, MockHttpServletResponse(), FilterChain { _, _ ->
+            capturedPrincipal = SecurityContextHolder.getContext().authentication?.principal
+        })
 
-        assertEquals(userId, SecurityContextHolder.getContext().authentication?.principal)
+        assertEquals(userId, capturedPrincipal)
     }
 
     @Test
     fun `skips authentication when Authorization header is missing`() {
-        filter.doFilter(MockHttpServletRequest(), MockHttpServletResponse(), MockFilterChain())
+        var capturedAuthentication: Any? = "sentinel"
+        filter.doFilter(MockHttpServletRequest(), MockHttpServletResponse(), FilterChain { _, _ ->
+            capturedAuthentication = SecurityContextHolder.getContext().authentication
+        })
 
-        assertNull(SecurityContextHolder.getContext().authentication)
+        assertNull(capturedAuthentication)
     }
 
     @Test
@@ -44,24 +51,31 @@ class JwtAuthFilterTest {
         val request = MockHttpServletRequest()
         request.addHeader("Authorization", "Bearer invalid.token.here")
 
-        filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
+        var capturedAuthentication: Any? = "sentinel"
+        filter.doFilter(request, MockHttpServletResponse(), FilterChain { _, _ ->
+            capturedAuthentication = SecurityContextHolder.getContext().authentication
+        })
 
-        assertNull(SecurityContextHolder.getContext().authentication)
+        assertNull(capturedAuthentication)
     }
 
     @Test
     fun `does not overwrite existing authentication`() {
-        val firstUserId = UUID.randomUUID()
-        val secondUserId = UUID.randomUUID()
+        val existingUserId = UUID.randomUUID()
+        val incomingUserId = UUID.randomUUID()
 
-        val firstRequest = MockHttpServletRequest()
-        firstRequest.addHeader("Authorization", "Bearer ${jwtService.generateToken(firstUserId)}")
-        filter.doFilter(firstRequest, MockHttpServletResponse(), MockFilterChain())
+        val existingContext = SecurityContextHolder.createEmptyContext()
+        existingContext.authentication = UsernamePasswordAuthenticationToken(existingUserId, null, emptyList())
+        SecurityContextHolder.setContext(existingContext)
 
-        val secondRequest = MockHttpServletRequest()
-        secondRequest.addHeader("Authorization", "Bearer ${jwtService.generateToken(secondUserId)}")
-        filter.doFilter(secondRequest, MockHttpServletResponse(), MockFilterChain())
+        val request = MockHttpServletRequest()
+        request.addHeader("Authorization", "Bearer ${jwtService.generateToken(incomingUserId)}")
 
-        assertEquals(firstUserId, SecurityContextHolder.getContext().authentication?.principal)
+        var capturedPrincipal: Any? = null
+        filter.doFilter(request, MockHttpServletResponse(), FilterChain { _, _ ->
+            capturedPrincipal = SecurityContextHolder.getContext().authentication?.principal
+        })
+
+        assertEquals(existingUserId, capturedPrincipal)
     }
 }
