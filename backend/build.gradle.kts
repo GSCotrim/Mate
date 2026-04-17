@@ -55,5 +55,20 @@ allOpen {
 }
 
 tasks.withType<Test> {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags("integration")
+	}
+	testLogging {
+		events("passed", "failed", "skipped")
+	}
+	outputs.upToDateWhen { false }
+}
+
+tasks.register<Test>("integrationTest") {
+	description = "Runs integration tests (requires Docker)"
+	group = "verification"
+	useJUnitPlatform {
+		includeTags("integration")
+	}
+	shouldRunAfter("test")
 }

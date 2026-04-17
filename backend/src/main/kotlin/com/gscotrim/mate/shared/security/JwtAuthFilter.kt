@@ -29,7 +29,7 @@ class JwtAuthFilter(
         val header = request.getHeader(AUTHORIZATION_HEADER)
 
         if (headerIsValid(header)) {
-            val token = header.removePrefix(BEARER_PREFIX)
+            val token = JwtToken(header.removePrefix(BEARER_PREFIX))
             val userId = jwtService.extractUserId(token)
 
             if (shouldAuthenticate(userId)) {
@@ -43,7 +43,11 @@ class JwtAuthFilter(
             }
         }
 
-        chain.doFilter(request, response)
+        try {
+            chain.doFilter(request, response)
+        } finally {
+            SecurityContextHolder.clearContext()
+        }
     }
 
     private fun headerIsValid(header: String?): Boolean {
