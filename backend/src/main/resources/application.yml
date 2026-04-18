@@ -2,7 +2,7 @@ spring:
   application:
     name: mate
   datasource:
-    url: jdbc:postgresql://localhost:5432/mate
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mate}
     username: ${DB_USERNAME:mate}
     password: ${DB_PASSWORD:mate}
   jpa:
